@@ -1,16 +1,14 @@
 package org.fly.beans.factory.xml;
 
-import org.fly.beans.factory.support.AbstractBeanDefinitionReader;
-import org.fly.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.BeanUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.BeanDefinitionStoreException;
-import org.springframework.beans.factory.parsing.*;
 import org.springframework.beans.factory.xml.*;
-import org.springframework.core.NamedThreadLocal;
 import org.springframework.core.io.DescriptiveResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.EncodedResource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.Assert;
 import org.springframework.util.xml.SimpleSaxErrorHandler;
 import org.springframework.util.xml.XmlValidationModeDetector;
@@ -24,31 +22,24 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Created by admin on 2017/8/21.
+ * Created by overfly on 2017/8/21.
  */
-public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
+public class MyXmlBeanDefinitionReader {
 
     public static final int VALIDATION_NONE = XmlValidationModeDetector.VALIDATION_NONE;
     public static final int VALIDATION_AUTO = XmlValidationModeDetector.VALIDATION_AUTO;
     public static final int VALIDATION_DTD = XmlValidationModeDetector.VALIDATION_DTD;
     public static final int VALIDATION_XSD = XmlValidationModeDetector.VALIDATION_XSD;
 
+    protected final Log logger = LogFactory.getLog(this.getClass());
+
     private DocumentLoader documentLoader = new DefaultDocumentLoader();
+    private ResourceLoader resourceLoader = new PathMatchingResourcePatternResolver();;
     private EntityResolver entityResolver;
-    private ErrorHandler errorHandler = new SimpleSaxErrorHandler(logger);
     private int validationMode = VALIDATION_AUTO;
     private boolean namespaceAware = false;
     private final XmlValidationModeDetector validationModeDetector = new XmlValidationModeDetector();
-    private Class<?> documentReaderClass = DefaultBeanDefinitionDocumentReader.class;
-    private NamespaceHandlerResolver namespaceHandlerResolver;
-    private ProblemReporter problemReporter = new FailFastProblemReporter();
-
-    private ReaderEventListener eventListener = new EmptyReaderEventListener();
-
-    private SourceExtractor sourceExtractor = new NullSourceExtractor();
-
-    private final ThreadLocal<Set<EncodedResource>> resourcesCurrentlyBeingLoaded =
-            new NamedThreadLocal<Set<EncodedResource>>("XML bean definition resources currently being loaded");
+    private ErrorHandler errorHandler = new SimpleSaxErrorHandler(logger);
 
     public void setDocumentLoader(DocumentLoader documentLoader) {
         this.documentLoader = (documentLoader != null ? documentLoader : new DefaultDocumentLoader());
@@ -62,12 +53,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
         if (this.entityResolver == null) {
             // Determine default EntityResolver to use.
             ResourceLoader resourceLoader = getResourceLoader();
-            if (resourceLoader != null) {
-                this.entityResolver = new ResourceEntityResolver(resourceLoader);
-            }
-            else {
-                this.entityResolver = new DelegatingEntityResolver(getBeanClassLoader());
-            }
+            this.entityResolver = new ResourceEntityResolver(resourceLoader);
         }
         return this.entityResolver;
     }
@@ -92,30 +78,15 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
         return this.namespaceAware;
     }
 
-    public void setDocumentReaderClass(Class<? extends BeanDefinitionDocumentReader> documentReaderClass) {
-        this.documentReaderClass = documentReaderClass;
+    public void setResourceLoader(ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
     }
 
-    public void setNamespaceHandlerResolver(NamespaceHandlerResolver namespaceHandlerResolver) {
-        this.namespaceHandlerResolver = namespaceHandlerResolver;
+    public ResourceLoader getResourceLoader() {
+        return this.resourceLoader;
     }
 
-    public void setProblemReporter(ProblemReporter problemReporter) {
-        this.problemReporter = (problemReporter != null ? problemReporter : new FailFastProblemReporter());
-    }
-
-    public void setEventListener(ReaderEventListener eventListener) {
-        this.eventListener = (eventListener != null ? eventListener : new EmptyReaderEventListener());
-    }
-
-    public void setSourceExtractor(SourceExtractor sourceExtractor) {
-        this.sourceExtractor = (sourceExtractor != null ? sourceExtractor : new NullSourceExtractor());
-    }
-
-
-    public XmlBeanDefinitionReader(BeanDefinitionRegistry registry){
-        super(registry);
-    }
+    public MyXmlBeanDefinitionReader(){}
 
     public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
         return loadBeanDefinitions(new EncodedResource(resource));
@@ -123,14 +94,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 
     public int loadBeanDefinitions(EncodedResource encodedResource) throws BeanDefinitionStoreException{
         Assert.notNull(encodedResource, "EncodedResource must not be null");
-        if (logger.isInfoEnabled()){
-            logger.info("Loading XML bean definitions from " + encodedResource.getResource());
-        }
-        Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
-        if (currentResources == null){
-            currentResources = new HashSet<EncodedResource>(4);
-            this.resourcesCurrentlyBeingLoaded.set(currentResources);
-        }
+        Set<EncodedResource> currentResources = new HashSet<EncodedResource>(4);
         if (!currentResources.add(encodedResource)){
             throw new BeanDefinitionStoreException("Detected cyclic loading of " + encodedResource + " - check your import definitions!");
         }
@@ -149,26 +113,13 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
             throw new BeanDefinitionStoreException("IOException parsing XML document from " + encodedResource.getResource(), ex);
         }finally {
             currentResources.remove(encodedResource);
-            if (currentResources.isEmpty()) {
-                this.resourcesCurrentlyBeingLoaded.remove();
-            }
         }
-    }
-
-    public int loadBeanDefinitions(InputSource inputSource) throws BeanDefinitionStoreException {
-        return loadBeanDefinitions(inputSource, "resource loaded through SAX InputSource");
-    }
-
-    public int loadBeanDefinitions(InputSource inputSource, String resourceDescription)
-            throws BeanDefinitionStoreException {
-
-        return doLoadBeanDefinitions(inputSource, new DescriptiveResource(resourceDescription));
     }
 
     protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource) throws BeanDefinitionStoreException {
         try {
             Document doc = doLoadDocument(inputSource, resource);
-            return registerBeanDefinitions(doc, resource);
+            return 0;
         }
         catch (BeanDefinitionStoreException ex) {
             throw ex;
@@ -195,11 +146,6 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
         }
     }
 
-    protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
-        return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
-                getValidationModeForResource(resource), isNamespaceAware());
-    }
-
     protected int getValidationModeForResource(Resource resource) {
         int validationModeToUse = getValidationMode();
         if (validationModeToUse != VALIDATION_AUTO) {
@@ -210,6 +156,11 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
             return detectedMode;
         }
         return VALIDATION_XSD;
+    }
+
+    protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
+        return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
+                getValidationModeForResource(resource), isNamespaceAware());
     }
 
     protected int detectValidationMode(Resource resource) {
@@ -239,34 +190,5 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
             throw new BeanDefinitionStoreException("Unable to determine validation mode for [" +
                     resource + "]: an error occurred whilst reading from the InputStream.", ex);
         }
-    }
-
-    public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
-        /*BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
-        int countBefore = getRegistry().getBeanDefinitionCount();
-        documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
-        return getRegistry().getBeanDefinitionCount() - countBefore;*/
-        return 0;
-    }
-
-    protected BeanDefinitionDocumentReader createBeanDefinitionDocumentReader() {
-        return BeanDefinitionDocumentReader.class.cast(BeanUtils.instantiateClass(this.documentReaderClass));
-    }
-
-    public XmlReaderContext createReaderContext(Resource resource) {
-        return new XmlReaderContext(resource, this.problemReporter, this.eventListener,
-                this.sourceExtractor, this, getNamespaceHandlerResolver());
-    }
-
-    public NamespaceHandlerResolver getNamespaceHandlerResolver() {
-        if (this.namespaceHandlerResolver == null) {
-            this.namespaceHandlerResolver = createDefaultNamespaceHandlerResolver();
-        }
-        return this.namespaceHandlerResolver;
-    }
-
-    protected NamespaceHandlerResolver createDefaultNamespaceHandlerResolver() {
-        ClassLoader cl = (getResourceLoader() != null ? getResourceLoader().getClassLoader() : getBeanClassLoader());
-        return new DefaultNamespaceHandlerResolver(cl);
     }
 }

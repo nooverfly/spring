@@ -7,6 +7,7 @@
   <version>1.0-SNAPSHOT</version>
   <modules>
     <module>spring-ioc</module>
+      <module>spring-core</module>
   </modules>
   <packaging>pom</packaging>
 

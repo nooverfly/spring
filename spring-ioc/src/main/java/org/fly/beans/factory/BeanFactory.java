@@ -1,6 +1,7 @@
 package org.fly.beans.factory;
 
 import org.fly.beans.BeansException;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * Created by admin on 2017/8/21.
@@ -12,6 +13,4 @@ public interface BeanFactory {
     <T> T getBean(String name, Class<T> requiredType) throws BeansException;
 
     Object getBean(String name, Object... args) throws BeansException;
-
-
 }
